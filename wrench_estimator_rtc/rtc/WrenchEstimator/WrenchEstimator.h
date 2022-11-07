@@ -1,6 +1,8 @@
 #ifndef VirtualForceSensor_H
 #define VirtualForceSensor_H
 
+#include <memory>
+
 #include <rtm/Manager.h>
 #include <rtm/DataFlowComponentBase.h>
 #include <rtm/DataOutPort.h>
@@ -11,6 +13,7 @@
 #include <cnoid/EigenTypes>
 #include <cnoid/Body>
 #include <cnoid/EigenUtil>
+#include <cnoid/JointPath>
 
 class WrenchEstimator : public RTC::DataFlowComponentBase{
 protected:
@@ -26,7 +29,7 @@ protected:
   RTC::TimedAcceleration3D m_acc_;
   RTC::InPort<RTC::TimedAcceleration3D> m_accIn_;
   std::vector<RTC::TimedDoubleSeq> m_wrenches_;
-  std::vector<RTC::InPort<RTC::TimedDoubleSeq>> m_wrenchesIn_;
+  std::vector<std::unique_ptr<RTC::InPort<RTC::TimedDoubleSeq> > > m_wrenchesIn_;
 
 public:
   WrenchEstimator(RTC::Manager* manager);
@@ -34,6 +37,15 @@ public:
   virtual RTC::ReturnCode_t onExecute(RTC::UniqueId ec_id);
 
 private:
+  struct WrenchEstimatorParam {
+    std::string target_name;
+    cnoid::Vector3 p;
+    cnoid::Matrix3 R;
+    cnoid::Vector3 forceOffset = cnoid::Vector3(0,0,0);
+    cnoid::Vector3 momentOffset = cnoid::Vector3(0,0,0);
+    cnoid::JointPath path;
+  };
+  std::map<std::string, WrenchEstimatorParam> m_sensors;
   cnoid::BodyPtr robot_;
 
 };

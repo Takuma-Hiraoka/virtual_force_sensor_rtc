@@ -1,6 +1,7 @@
 #include "WrenchEstimator.h"
 #include <cnoid/BodyLoader>
 #include <cnoid/RateGyroSensor>
+#include <cnoid/ForceSensor>
 
 WrenchEstimator::WrenchEstimator(RTC::Manager* manager):
   RTC::DataFlowComponentBase(manager),
@@ -29,6 +30,61 @@ RTC::ReturnCode_t WrenchEstimator::onInitialize(){
   if(!this->robot_){
     std::cerr << "\x1b[31m[" << this->m_profile.instance_name << "] " << "failed to load model[" << fileName << "]" << "\x1b[39m" << std::endl;
     return RTC::RTC_ERROR;
+  }
+
+  // 各ForceSensorにつき、<name>InというInportをつくる
+  cnoid::DeviceList<cnoid::ForceSensor> forceSensors(this->robot_->devices());
+  this->m_wrenchesIn_.resize(forceSensors.size());
+  this->m_wrenches_.resize(forceSensors.size());
+  for(int i=0;i<forceSensors.size();i++){
+    std::string name = forceSensors[i]->name()+"In";
+    this->m_wrenchesIn_[i] = std::make_unique<RTC::InPort<RTC::TimedDoubleSeq> >(name.c_str(), this->m_wrenches_[i]);
+    this->addInPort(name.c_str(), *(m_wrenchesIn_[i]));
+  }
+
+  {
+    // wrench_estimator: <name>, <target>, 0, 0, 0,  0, 0, 1, 0
+    std::string wrenchEstimators;
+    if(this->getProperties().hasKey("wrench_estimator")) wrenchEstimators = std::string(this->getProperties()["wrench_estimator"]);
+    else wrenchEstimators = std::string(this->m_pManager->getConfig()["wrench_estimator"]); // 引数 -o で与えたプロパティを捕捉
+    std::cerr << "[" << this->m_profile.instance_name << "] wrench_estimator : " << wrenchEstimators << std::endl;
+    std::stringstream ss_wrenchEstimators(wrenchEstimators);
+    std::string buf;
+    while(std::getline(ss_wrenchEstimators, buf, ',')){
+      std::string name;
+      std::string target_name;
+      cnoid::Vector3 localp;
+      cnoid::Vector3 localaxis;
+      double localangle;
+
+      name = buf;
+      if(!std::getline(ss_wrenchEstimators, buf, ',')) break; target_name = buf;
+      if(!std::getline(ss_wrenchEstimators, buf, ',')) break; localp[0] = std::stod(buf);
+      if(!std::getline(ss_wrenchEstimators, buf, ',')) break; localp[1] = std::stod(buf);
+      if(!std::getline(ss_wrenchEstimators, buf, ',')) break; localp[2] = std::stod(buf);
+      if(!std::getline(ss_wrenchEstimators, buf, ',')) break; localaxis[0] = std::stod(buf);
+      if(!std::getline(ss_wrenchEstimators, buf, ',')) break; localaxis[1] = std::stod(buf);
+      if(!std::getline(ss_wrenchEstimators, buf, ',')) break; localaxis[2] = std::stod(buf);
+      if(!std::getline(ss_wrenchEstimators, buf, ',')) break; localangle = std::stod(buf);
+
+      // check validity
+      name.erase(std::remove(name.begin(), name.end(), ' '), name.end()); // remove whitespace
+      target_name.erase(std::remove(target_name.begin(), target_name.end(), ' '), target_name.end()); // remove whitespace
+
+      cnoid::Matrix3 localR;
+      if(localaxis.norm() == 0) localR = cnoid::Matrix3::Identity();
+      else localR = Eigen::AngleAxisd(localangle, localaxis.normalized()).toRotationMatrix();
+
+      std::cerr << "[" << this->m_profile.instance_name << "] wrench estimator : " << name << std::endl;
+      std::cerr << "[" << this->m_profile.instance_name << "]           target : " << target_name << std::endl;
+      std::cerr << "[" << this->m_profile.instance_name << "]             T, R : " << localp[0] << " " << localp[1] << " " << localp[2] << std::endl << localR << std::endl;
+      WrenchEstimator::WrenchEstimatorParam wep;
+      wep.target_name = target_name;
+      wep.p = localp;
+      wep.R = localR;
+      wep.path = cnoid::JointPath(this->robot_->rootLink(), this->robot_->link(target_name));
+      m_sensors[name] = wep;
+    }
   }
 
   return RTC::RTC_OK;
