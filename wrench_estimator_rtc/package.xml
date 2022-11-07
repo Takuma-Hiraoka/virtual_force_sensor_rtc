@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>virtual_force_sensor_rtc</name>
+  <name>wrench_estimator_rtc</name>
   <version>0.0.0</version>
-  <description>The virtual_force_sensor_rtc package </description>
+  <description>The wrench_estimator_rtc package </description>
 
   <maintainer email="t-hiraoka@jsk.imi.i.u-tokyo.ac.jp">Takuma-Hiraoka</maintainer>
 

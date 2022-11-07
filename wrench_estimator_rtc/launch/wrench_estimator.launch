@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="wrench_estimator_rtc" name="WrenchEstimator" type="WrenchEstimatorComp"
+        output="screen" args ='-o "corba.master_manager:localhost:2810" -o "corba.nameservers:localhost:15005" -o "naming.formats:%n.rtc" -o "exec_cxt.periodic.rate:10"' />
+  <rtactivate component="WrenchEstimator0.rtc" />
+  <node name="rtmlaunch_wrench_estimator" pkg="openrtm_tools" type="rtmlaunch.py" args="$(find wrench_estimator_rtc)/launch/wrench_estimator.launch" output="screen"/>
+
+</launch>
