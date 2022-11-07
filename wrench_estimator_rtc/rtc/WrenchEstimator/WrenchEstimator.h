@@ -10,14 +10,23 @@
 
 #include <cnoid/EigenTypes>
 #include <cnoid/Body>
+#include <cnoid/EigenUtil>
 
 class WrenchEstimator : public RTC::DataFlowComponentBase{
 protected:
 
-  //  RTC::TimedDoubleSeq m_q_;
-  //  RTC::InPort<RTC::TimedDoubleSeq> m_qIn_;
-  //  RTC::TimedOrientation3D m_baseRpy_;
-  //  RTC::InPort<RTC::TimedOrientation3D> m_baseRpyIn_;
+  RTC::TimedDoubleSeq m_q_;
+  RTC::InPort<RTC::TimedDoubleSeq> m_qIn_;
+  RTC::TimedDoubleSeq m_dq_;
+  RTC::InPort<RTC::TimedDoubleSeq> m_dqIn_;
+  RTC::TimedDoubleSeq m_tau_;
+  RTC::InPort<RTC::TimedDoubleSeq> m_tauIn_;
+  RTC::TimedOrientation3D m_senRpy_;
+  RTC::InPort<RTC::TimedOrientation3D> m_senRpyIn_;
+  RTC::TimedAcceleration3D m_acc_;
+  RTC::InPort<RTC::TimedAcceleration3D> m_accIn_;
+  std::vector<RTC::TimedDoubleSeq> m_wrenches_;
+  std::vector<RTC::InPort<RTC::TimedDoubleSeq>> m_wrenchesIn_;
 
 public:
   WrenchEstimator(RTC::Manager* manager);
@@ -25,7 +34,7 @@ public:
   virtual RTC::ReturnCode_t onExecute(RTC::UniqueId ec_id);
 
 private:
-  //cnoid::BodyPtr robot_;
+  cnoid::BodyPtr robot_;
 
 };
 
