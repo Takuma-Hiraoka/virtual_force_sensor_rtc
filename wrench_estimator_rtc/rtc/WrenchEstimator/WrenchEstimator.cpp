@@ -88,15 +88,17 @@ RTC::ReturnCode_t WrenchEstimator::onInitialize(){
     }
   }
 
-  this->tau_act = cnoid::VectorXd::Zero(this->robot_->numJoints());
-  this->tau_g = cnoid::VectorXd::Zero(this->robot_->numJoints());
-  this->tau_ee = cnoid::VectorXd::Zero(this->robot_->numJoints());
+  this->tau_act = cnoid::VectorXd::Zero(6 + this->robot_->numJoints());
+  this->tau_g = cnoid::VectorXd::Zero(6 + this->robot_->numJoints());
+  this->tau_ee = cnoid::VectorXd::Zero(6 + this->robot_->numJoints());
 
   return RTC::RTC_OK;
 }
 
 RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
   std::cerr << "WrenchEstimator rtc onExecute" << std::endl;
+
+  cnoid::VectorXd Tvirtual = cnoid::VectorXd::Zero(6 + this->robot_->numJoints());
 
   if (this->m_qIn_.isNew()){
     this->m_qIn_.read();
@@ -129,20 +131,59 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
     this->m_tauIn_.read();
     if(this->m_tau_.data.length() == this->robot_->numJoints()){
       for ( int i = 0; i < this->robot_->numJoints(); i++ ){
-	tau_act[i] = this->m_tau_.data[i];
+	tau_act[6+i] = this->m_tau_.data[i];
       }
     }
+    Tvirtual -= this->tau_act;
   }
 
   if (this->m_accIn_.isNew()) this->m_accIn_.read();
+  for (size_t i = 0; i < m_wrenchesIn_.size(); ++i) {
+      if ( m_wrenchesIn_[i]->isNew() ) {
+          m_wrenchesIn_[i]->read();
+      }
+  }
 
   this->robot_->calcForwardKinematics();
 
-  cnoid::calcInverseDynamics(this->robot_->rootLink()); // 逆動力学を解く 重力補償分のtau_gが求まる
-  for (int i=0; i< this->robot_->numJoints(); i++){
-    this->tau_g[i] = this->robot_->joint(i)->u();
-  }
+  cnoid::Vector3 base_f = cnoid::Vector3::Zero();
+  cnoid::Vector3 base_t = cnoid::Vector3::Zero();
   
+  cnoid::calcInverseDynamics(this->robot_->rootLink()); // 逆動力学を解く 重力補償分のtau_gが求まる
+  this->tau_g.block<3,1>(0,0) = base_f;
+  this->tau_g.block<3,1>(3,0) = base_t;
+  for (int i=0; i< this->robot_->numJoints(); i++){
+    this->tau_g[6+i] = this->robot_->joint(i)->u();
+  }
+
+  Tvirtual += this->tau_g;
+
+  //各反力に相当するトルク
+  cnoid::DeviceList<cnoid::ForceSensor> forceSensors(this->robot_->devices());
+  for (size_t i = 0; i < forceSensors.size() ; i++){
+    cnoid::JointPath jointpath(this->robot_->rootLink(), this->robot_->devices()[i]->link());
+    cnoid::MatrixXd JJ = cnoid::MatrixXd::Zero(6,jointpath.numJoints());
+    cnoid::setJacobian<0x3f,0,0>(jointpath,this->robot_->devices()[i]->link(), // input
+				      JJ); // output 
+    cnoid::MatrixXd J = cnoid::MatrixXd::Zero(6,6+this->robot_->numJoints());
+    J.block<3,3>(0,0) = cnoid::Matrix3::Identity();
+    J.block<3,3>(0,3) = - cnoid::hat(forceSensors[i]->link()->p() + forceSensors[i]->link()->R() * forceSensors[i]->p_local());
+    J.block<3,3>(3,3) = cnoid::Matrix3::Identity();
+    for (int j = 0; j < jointpath.numJoints() ; j++){
+      J.block<6,1>(0,6+jointpath.joint(j)->jointId()) = JJ.block<6,1>(0,j);
+    }
+    
+    //実際の反力を取得
+    cnoid::Vector6 wrench = cnoid::Vector6::Zero();
+    wrench << m_wrenches_[i].data[0],m_wrenches_[i].data[1],m_wrenches_[i].data[2],m_wrenches_[i].data[3],m_wrenches_[i].data[4],m_wrenches_[i].data[5];//実際の反力を取得
+    wrench.block<3,1>(0,0) = (forceSensors[i]->link()->R() * forceSensors[i]->R_local()) * wrench.head<3>();
+    wrench.block<3,1>(3,0) = (forceSensors[i]->link()->R() * forceSensors[i]->R_local()) * wrench.tail<3>();
+
+    Tvirtual -= J.transpose() * wrench;//このセンサのJ^T wを引く
+    
+    }
+  //トルクを引く Tvirtual = J^T w^e になっている
+
   return RTC::RTC_OK;
 }
 

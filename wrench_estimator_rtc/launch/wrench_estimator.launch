@@ -10,6 +10,10 @@
   <rtconnect from="WrenchEstimator0.rtc:tauIn" to="RobotHardware_choreonoid0.rtc:tau" subscription_type="new"/>
   <rtconnect from="WrenchEstimator0.rtc:senRpyIn" to="kf.rtc:rpy" subscription_type="new"/>
   <rtconnect from="WrenchEstimator0.rtc:accIn" to="ast.rtc:genImuAccOut" subscription_type="new"/>
+  <rtconnect from="WrenchEstimator0.rtc:lfsensorIn" to="rmfo.rtc:off_lfsensor" subscription_type="new"/>
+  <rtconnect from="WrenchEstimator0.rtc:rfsensorIn" to="rmfo.rtc:off_rfsensor" subscription_type="new"/>
+  <rtconnect from="WrenchEstimator0.rtc:lhsensorIn" to="rmfo.rtc:off_lhsensor" subscription_type="new"/>
+  <rtconnect from="WrenchEstimator0.rtc:rhsensorIn" to="rmfo.rtc:off_rhsensor" subscription_type="new"/>
   <rtactivate component="WrenchEstimator0.rtc" />
   <node name="rtmlaunch_wrench_estimator" pkg="openrtm_tools" type="rtmlaunch.py" args="$(find wrench_estimator_rtc)/launch/wrench_estimator.launch" output="screen"/>
 

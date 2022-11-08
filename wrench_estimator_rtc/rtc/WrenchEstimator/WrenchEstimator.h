@@ -14,6 +14,7 @@
 #include <cnoid/Body>
 #include <cnoid/EigenUtil>
 #include <cnoid/JointPath>
+#include <cnoid/Jacobian>
 
 class WrenchEstimator : public RTC::DataFlowComponentBase{
 protected:
