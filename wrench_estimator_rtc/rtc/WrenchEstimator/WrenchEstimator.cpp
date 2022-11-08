@@ -127,17 +127,24 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
     }
   }
 
-  if (this->m_tauIn_.isNew()){
+  if (this->m_tauIn_.isNew() && this->m_accIn_.isNew()){
     this->m_tauIn_.read();
+    this->m_accIn_.read();
     if(this->m_tau_.data.length() == this->robot_->numJoints()){
       for ( int i = 0; i < this->robot_->numJoints(); i++ ){
-	tau_act[6+i] = this->m_tau_.data[i];
+	this->tau_act[6+i] = this->m_tau_.data[i];
       }
     }
+    cnoid::RateGyroSensorPtr imu = this->robot_->findDevice<cnoid::RateGyroSensor>("gyrometer");
+    cnoid::Matrix3 imuR = imu->link()->R() * imu->R_local();
+    cnoid::Vector3 sen_acc;
+    sen_acc[0] = m_acc_.data.ax;
+    sen_acc[1] = m_acc_.data.ay;
+    sen_acc[2] = m_acc_.data.az;
+    cnoid::Vector3 acc = imuR * sen_acc;
     Tvirtual -= this->tau_act;
   }
 
-  if (this->m_accIn_.isNew()) this->m_accIn_.read();
   for (size_t i = 0; i < m_wrenchesIn_.size(); ++i) {
       if ( m_wrenchesIn_[i]->isNew() ) {
           m_wrenchesIn_[i]->read();
@@ -152,7 +159,7 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
   cnoid::Vector3 base_t = cnoid::Vector3::Zero();
   
   cnoid::calcInverseDynamics(this->robot_->rootLink()); // 逆動力学を解く 重力補償分のtau_gが求まる
-  this->tau_g.block<3,1>(0,0) = base_f;
+  this->tau_g.block<3,1>(0,0) = cnoid::Vector3(0.0,0.0,9.80665) * this->robot_->mass();
   this->tau_g.block<3,1>(3,0) = base_t;
   for (int i=0; i< this->robot_->numJoints(); i++){
     this->tau_g[6+i] = this->robot_->joint(i)->u();
