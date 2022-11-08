@@ -144,7 +144,9 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
       }
   }
 
-  this->robot_->calcForwardKinematics();
+  this->robot_->rootLink()->dv() = cnoid::Vector3(0.0,0.0,9.80665); // 仮想的な重力
+  this->robot_->calcForwardKinematics(true, true);
+  this->robot_->calcCenterOfMass();
 
   cnoid::Vector3 base_f = cnoid::Vector3::Zero();
   cnoid::Vector3 base_t = cnoid::Vector3::Zero();
@@ -161,9 +163,9 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
   //各反力に相当するトルク
   cnoid::DeviceList<cnoid::ForceSensor> forceSensors(this->robot_->devices());
   for (size_t i = 0; i < forceSensors.size() ; i++){
-    cnoid::JointPath jointpath(this->robot_->rootLink(), this->robot_->devices()[i]->link());
+    cnoid::JointPath jointpath(this->robot_->rootLink(), forceSensors[i]->link());
     cnoid::MatrixXd JJ = cnoid::MatrixXd::Zero(6,jointpath.numJoints());
-    cnoid::setJacobian<0x3f,0,0>(jointpath,this->robot_->devices()[i]->link(), // input
+    cnoid::setJacobian<0x3f,0,0,true>(jointpath,forceSensors[i]->link(), forceSensors[i]->p_local(),// input
 				      JJ); // output 
     cnoid::MatrixXd J = cnoid::MatrixXd::Zero(6,6+this->robot_->numJoints());
     J.block<3,3>(0,0) = cnoid::Matrix3::Identity();
@@ -180,8 +182,8 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
     wrench.block<3,1>(3,0) = (forceSensors[i]->link()->R() * forceSensors[i]->R_local()) * wrench.tail<3>();
 
     Tvirtual -= J.transpose() * wrench;//このセンサのJ^T wを引く
-    
-    }
+
+  }
   //トルクを引く Tvirtual = J^T w^e になっている
 
   return RTC::RTC_OK;
