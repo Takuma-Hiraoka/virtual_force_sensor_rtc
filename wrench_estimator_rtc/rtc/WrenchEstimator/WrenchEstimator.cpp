@@ -2,6 +2,7 @@
 #include <cnoid/BodyLoader>
 #include <cnoid/RateGyroSensor>
 #include <cnoid/ForceSensor>
+#include <cnoid/src/Body/InverseDynamics.h>
 
 WrenchEstimator::WrenchEstimator(RTC::Manager* manager):
   RTC::DataFlowComponentBase(manager),
@@ -87,6 +88,10 @@ RTC::ReturnCode_t WrenchEstimator::onInitialize(){
     }
   }
 
+  this->tau_act = cnoid::VectorXd::Zero(this->robot_->numJoints());
+  this->tau_g = cnoid::VectorXd::Zero(this->robot_->numJoints());
+  this->tau_ee = cnoid::VectorXd::Zero(this->robot_->numJoints());
+
   return RTC::RTC_OK;
 }
 
@@ -124,7 +129,7 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
     this->m_tauIn_.read();
     if(this->m_tau_.data.length() == this->robot_->numJoints()){
       for ( int i = 0; i < this->robot_->numJoints(); i++ ){
-	this->robot_->joint(i)->u() = this->m_tau_.data[i];
+	tau_act[i] = this->m_tau_.data[i];
       }
     }
   }
@@ -132,6 +137,12 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
   if (this->m_accIn_.isNew()) this->m_accIn_.read();
 
   this->robot_->calcForwardKinematics();
+
+  cnoid::calcInverseDynamics(this->robot_->rootLink()); // 逆動力学を解く 重力補償分のtau_gが求まる
+  for (int i=0; i< this->robot_->numJoints(); i++){
+    this->tau_g[i] = this->robot_->joint(i)->u();
+  }
+  
   return RTC::RTC_OK;
 }
 

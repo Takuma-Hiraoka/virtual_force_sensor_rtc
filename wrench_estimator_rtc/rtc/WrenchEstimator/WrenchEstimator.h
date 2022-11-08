@@ -48,6 +48,10 @@ private:
   std::map<std::string, WrenchEstimatorParam> m_sensors;
   cnoid::BodyPtr robot_;
 
+  cnoid::VectorXd tau_act; // RobotHardwareからの生のトルク
+  cnoid::VectorXd tau_g; // 重力補償分のトルク
+  cnoid::VectorXd tau_ee; // 6軸力センサで計測されているレンチ分のトルク
+
 };
 
 extern "C"
