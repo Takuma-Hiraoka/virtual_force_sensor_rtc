@@ -79,11 +79,10 @@ RTC::ReturnCode_t WrenchEstimator::onInitialize(){
       std::cerr << "[" << this->m_profile.instance_name << "] wrench estimator : " << name << std::endl;
       std::cerr << "[" << this->m_profile.instance_name << "]           target : " << target_name << std::endl;
       std::cerr << "[" << this->m_profile.instance_name << "]             T, R : " << localp[0] << " " << localp[1] << " " << localp[2] << std::endl << localR << std::endl;
-      WrenchEstimator::WrenchEstimatorParam wep;
-      wep.target_name = target_name;
-      wep.p = localp;
-      wep.R = localR;
-      wep.path = cnoid::JointPath(this->robot_->rootLink(), this->robot_->link(target_name));
+      std::shared_ptr<WrenchEstimator::WrenchEstimatorParam> wep = std::make_shared<WrenchEstimator::WrenchEstimatorParam>();
+      wep->target_name = target_name;
+      wep->p = localp;
+      wep->R = localR;
       m_sensors[name] = wep;
     }
   }
@@ -192,7 +191,29 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
 
   }
   //トルクを引く Tvirtual = J^T w^e になっている
-
+  {
+    //推定したいセンサのJを計算
+    cnoid::MatrixXd J = cnoid::MatrixXd::Zero(6 * m_sensors.size(),6+this->robot_->numJoints());
+    {
+      std::map<std::string, std::shared_ptr<WrenchEstimatorParam> >::iterator it = m_sensors.begin();
+      for (int i = 0 ; i < m_sensors.size(); i++){
+	cnoid::JointPath jointpath(this->robot_->rootLink(), this->robot_->link((*it).second->target_name));
+	cnoid::MatrixXd JJ = cnoid::MatrixXd::Zero(6,jointpath.numJoints());
+	cnoid::setJacobian<0x3f,0,0,true>(jointpath,this->robot_->link((*it).second->target_name), (*it).second->p,// input
+					  JJ); //output
+	
+	cnoid::Matrix3 senRt = (this->robot_->link((*it).second->target_name)->R() * (*it).second->R).transpose();
+	J.block<3,3>(i*6,0) = senRt;
+	J.block<3,3>(i*6,3) = senRt * - cnoid::hat(this->robot_->link((*it).second->target_name)->p() + this->robot_->link((*it).second->target_name)->R() * (*it).second->p);
+	J.block<3,3>(i*6+3,3) = senRt;
+	for (int j = 0; j < jointpath.numJoints() ; j++){
+	  J.block<3,1>(i*6,6+jointpath.joint(j)->jointId()) = senRt * JJ.block<3,1>(0,j);
+	  J.block<3,1>(i*6+3,6+jointpath.joint(j)->jointId()) = senRt * JJ.block<3,1>(3,j);
+	}
+	it++;
+      }
+    }
+  }
   return RTC::RTC_OK;
 }
 

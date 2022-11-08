@@ -44,9 +44,8 @@ private:
     cnoid::Matrix3 R;
     cnoid::Vector3 forceOffset = cnoid::Vector3(0,0,0);
     cnoid::Vector3 momentOffset = cnoid::Vector3(0,0,0);
-    cnoid::JointPath path;
   };
-  std::map<std::string, WrenchEstimatorParam> m_sensors;
+  std::map<std::string, std::shared_ptr<WrenchEstimatorParam>> m_sensors;
   cnoid::BodyPtr robot_;
 
   cnoid::VectorXd tau_act; // RobotHardwareからの生のトルク
