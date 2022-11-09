@@ -221,7 +221,29 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
 	it++;
       }
     }
-    estWrenches = (J * J.transpose()).inverse() * J * Tvirtual;
+    double root_force_weight = 10000.0;
+    double root_moment_weight = 100.0;
+    double joint_torque_weight = 1.0;
+    double weight = 1e-6;
+
+    cnoid::MatrixXd W = cnoid::MatrixXd::Zero(6+this->robot_->numJoints(), 6+this->robot_->numJoints());
+    for(int i=0; i < 3; i++){
+      W(i,i) = root_force_weight;
+    }
+    for(int i=0; i < 3; i++){
+      W(3+i,3+i) = root_moment_weight;
+    }
+    for(int i=0; i < this->robot_->numJoints(); i++){
+      W(6+i,6+i) = joint_torque_weight;
+    }
+
+    cnoid::MatrixXd w_w = cnoid::MatrixXd::Zero(6 * m_sensors.size(), 6 * m_sensors.size());
+    for(int i=0; i < 6 * m_sensors.size(); i++){
+      w_w(i,i) = weight;
+    }
+
+    
+    estWrenches = (J * W * J.transpose() + w_w).inverse() * J * W * Tvirtual;
     std::cerr << estWrenches << std::endl;
   }
 
