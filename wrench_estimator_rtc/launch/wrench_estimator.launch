@@ -2,7 +2,8 @@
   <arg name="CONF_FILE"      value="$(find msl_hand_controller)/models/JAXON_RED.conf"/>
   <arg name="URDF_FILE" value="$(find msl_hand_controller)/models/JAXON_JVRC_SENSORS.urdf"/>
   <arg name="MODEL_FILE"     value="$(find msl_hand_models)/JAXON_JVRC_WITH_MSLHAND/JAXON_JVRCmain.wrl"/>
-  <arg name="wrench_estimator" default="vlhsensor, LARM_JOINT7, 0,0,0, 0,0,1,0, vrhsensor, RARM_JOINT7, 0,0,0, 0,0,1,0, vlfsensor, LLEG_JOINT5, 0,0,0, 0,0,1,0, vrfsensor, RLEG_JOINT5, 0,0,0, 0,0,1,0" />
+  <arg name="wrench_estimator" default="vlhsensor, LARM_JOINT7, 0,0,0, 0,0,1,0, vrhsensor, RARM_JOINT7, 0,0,0, 0,0,1,0, vlfsensor, LLEG_JOINT5, 0,0,0, 0,0,1,0, vrfsensor, RLEG_JOINT5, 0,0,0, 0,0,1,0"/>
+  <!-- vlssensor, LARM_JOINT2, 0,0,0, 0,0,1,0, vrssensor, RARM_JOINT2, 0,0,0, 0,0,1,0, vlesensor, LARM_JOINT4, 0,0,0, 0,0,1,0, vresensor, RARM_JOINT4, 0,0,0, 0,0,1,0" /> -->
   <node pkg="wrench_estimator_rtc" name="WrenchEstimator" type="WrenchEstimatorComp"
         output="screen" args ='-o "corba.master_manager:localhost:2810" -o "corba.nameservers:localhost:15005" -o "naming.formats:%n.rtc" -o "exec_cxt.periodic.rate:10" -o "model:$(arg MODEL_FILE)" -o "wrench_estimator:$(arg wrench_estimator)"' />
   <rtconnect from="WrenchEstimator0.rtc:qIn" to="RobotHardware_choreonoid0.rtc:q" subscription_type="new"/>
@@ -15,6 +16,13 @@
   <rtconnect from="WrenchEstimator0.rtc:lhsensorIn" to="rmfo.rtc:off_lhsensor" subscription_type="new"/>
   <rtconnect from="WrenchEstimator0.rtc:rhsensorIn" to="rmfo.rtc:off_rhsensor" subscription_type="new"/>
   <rtactivate component="WrenchEstimator0.rtc" />
+
+  <!-- ros bridge-->
+  <node pkg="wrench_estimator_ros_bridge" name="WrenchEstimatorROSBridge" type="WrenchEstimatorROSBridgeComp"
+        output="screen" args ='-o "corba.master_manager:localhost:2810" -o "corba.nameservers:localhost:15005" -o "naming.formats:%n.rtc" -o "exec_cxt.periodic.rate:500" -o "wrench_estimator:$(arg wrench_estimator)"' />
+  <rtconnect from="WrenchEstimator0.rtc:estWrenchesOut" to="WrenchEstimatorROSBridge.rtc:estWrenchesIn" subscription_type="new"/>
+  <rtactivate component="WrenchEstimatorROSBridge.rtc" />
+
   <node name="rtmlaunch_wrench_estimator" pkg="openrtm_tools" type="rtmlaunch.py" args="$(find wrench_estimator_rtc)/launch/wrench_estimator.launch" output="screen"/>
 
 </launch>

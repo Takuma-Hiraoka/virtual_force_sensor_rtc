@@ -7,7 +7,8 @@ add_definitions(-Wno-deprecated)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  wrench_estimator_msgs)
+  wrench_estimator_msgs
+  geometry_msgs)
 
 find_package(PkgConfig)
 pkg_check_modules(openrtm_aist openrtm-aist REQUIRED)

@@ -174,26 +174,27 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
   //各反力に相当するトルク
   cnoid::DeviceList<cnoid::ForceSensor> forceSensors(this->robot_->devices());
   for (size_t i = 0; i < forceSensors.size() ; i++){
-    cnoid::JointPath jointpath(this->robot_->rootLink(), forceSensors[i]->link());
-    cnoid::MatrixXd JJ = cnoid::MatrixXd::Zero(6,jointpath.numJoints());
-    cnoid::setJacobian<0x3f,0,0,true>(jointpath,forceSensors[i]->link(), forceSensors[i]->p_local(),// input
-				      JJ); // output 
-    cnoid::MatrixXd J = cnoid::MatrixXd::Zero(6,6+this->robot_->numJoints());
-    J.block<3,3>(0,0) = cnoid::Matrix3::Identity();
-    J.block<3,3>(0,3) = - cnoid::hat(forceSensors[i]->link()->p() + forceSensors[i]->link()->R() * forceSensors[i]->p_local());
-    J.block<3,3>(3,3) = cnoid::Matrix3::Identity();
-    for (int j = 0; j < jointpath.numJoints() ; j++){
-      J.block<6,1>(0,6+jointpath.joint(j)->jointId()) = JJ.block<6,1>(0,j);
+    if ( m_wrenchesIn_[i]->isNew() ) {
+      cnoid::JointPath jointpath(this->robot_->rootLink(), forceSensors[i]->link());
+      cnoid::MatrixXd JJ = cnoid::MatrixXd::Zero(6,jointpath.numJoints());
+      cnoid::setJacobian<0x3f,0,0,true>(jointpath,forceSensors[i]->link(), forceSensors[i]->p_local(),// input
+					JJ); // output 
+      cnoid::MatrixXd J = cnoid::MatrixXd::Zero(6,6+this->robot_->numJoints());
+      J.block<3,3>(0,0) = cnoid::Matrix3::Identity();
+      J.block<3,3>(0,3) = - cnoid::hat(forceSensors[i]->link()->p() + forceSensors[i]->link()->R() * forceSensors[i]->p_local());
+      J.block<3,3>(3,3) = cnoid::Matrix3::Identity();
+      for (int j = 0; j < jointpath.numJoints() ; j++){
+	J.block<6,1>(0,6+jointpath.joint(j)->jointId()) = JJ.block<6,1>(0,j);
+      }
+
+      //実際の反力を取得
+      cnoid::Vector6 wrench = cnoid::Vector6::Zero();
+      wrench << m_wrenches_[i].data[0],m_wrenches_[i].data[1],m_wrenches_[i].data[2],m_wrenches_[i].data[3],m_wrenches_[i].data[4],m_wrenches_[i].data[5];//実際の反力を取得
+      wrench.block<3,1>(0,0) = (forceSensors[i]->link()->R() * forceSensors[i]->R_local()) * wrench.head<3>();
+      wrench.block<3,1>(3,0) = (forceSensors[i]->link()->R() * forceSensors[i]->R_local()) * wrench.tail<3>();
+
+      Tvirtual -= J.transpose() * wrench;//このセンサのJ^T wを引く
     }
-    
-    //実際の反力を取得
-    cnoid::Vector6 wrench = cnoid::Vector6::Zero();
-    wrench << m_wrenches_[i].data[0],m_wrenches_[i].data[1],m_wrenches_[i].data[2],m_wrenches_[i].data[3],m_wrenches_[i].data[4],m_wrenches_[i].data[5];//実際の反力を取得
-    wrench.block<3,1>(0,0) = (forceSensors[i]->link()->R() * forceSensors[i]->R_local()) * wrench.head<3>();
-    wrench.block<3,1>(3,0) = (forceSensors[i]->link()->R() * forceSensors[i]->R_local()) * wrench.tail<3>();
-
-    Tvirtual -= J.transpose() * wrench;//このセンサのJ^T wを引く
-
   }
   //トルクを引く Tvirtual = J^T w^e になっている
 
