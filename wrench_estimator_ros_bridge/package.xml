@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>wrench_estimator_ros_bridge</name>
+  <version>0.0.0</version>
+  <description>The wrench_estimator_ros_bridge package</description>
+
+  <maintainer email="t-hiraoka@jsk.imi.i.u-tokyo.ac.jp">Takuma-Hiraoka</maintainer>
+
+  <license>BSD</license>
+
+  <author email="t-hiraoka@jsk.imi.i.u-tokyo.ac.jp">Takuma-Hiraoka</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>wrench_estimator_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>geometry_msgs</depend>
+
+</package>

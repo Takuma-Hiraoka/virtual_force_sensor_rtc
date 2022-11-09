@@ -12,10 +12,10 @@ module wrench_estimator_msgs
     RTC::Vector3D moment;
   };
 
-  struct TimedWrench
+  struct TimedWrenches
   {
     RTC::Time tm;
-    Wrench data;
+    sequence<Wrench> data;
   };
 };
 
