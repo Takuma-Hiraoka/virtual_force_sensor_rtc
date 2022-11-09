@@ -1,0 +1,9 @@
+#include "BasicDataType.idl"
+
+module wrench_estimator_rtc
+{
+  interface WrenchEstimatorService
+  {
+    boolean removeWrenchEstimatorOffset(in double tm);
+  };
+};

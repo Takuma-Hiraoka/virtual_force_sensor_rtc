@@ -12,8 +12,10 @@ WrenchEstimator::WrenchEstimator(RTC::Manager* manager):
   m_tauIn_("tauIn", m_tau_),
   m_senRpyIn_("senRpyIn", m_senRpy_),
   m_accIn_("accIn", m_acc_),
-  m_estWrenchesOut_("estWrenchesOut", m_estWrenches_)
+  m_estWrenchesOut_("estWrenchesOut", m_estWrenches_),
+  m_wrenchEstimatorServicePort_("WrenchEstimatorService")
 {
+  this->m_service0_.setComp(this);
 }
 
 RTC::ReturnCode_t WrenchEstimator::onInitialize(){
@@ -23,6 +25,9 @@ RTC::ReturnCode_t WrenchEstimator::onInitialize(){
   addInPort("senRpyIn", this->m_senRpyIn_);
   addInPort("accIn", this->m_accIn_);
   addOutPort("estWrenchesOut", this->m_estWrenchesOut_);
+  this->m_wrenchEstimatorServicePort_.registerProvider("service0", "WrenchEstimatorService", this->m_service0_);
+  addPort(this->m_wrenchEstimatorServicePort_);
+
   // load robot model
   cnoid::BodyLoader bodyLoader;
   std::string fileName;
@@ -244,9 +249,18 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
 
     
     estWrenches = (J * W * J.transpose() + w_w).inverse() * J * W * Tvirtual;
-    std::cerr << estWrenches << std::endl;
   }
 
+  // calibration
+  {
+    std::map<std::string, std::shared_ptr<WrenchEstimatorParam> >::iterator it = m_sensors.begin();
+    for (int i = 0 ; i < m_sensors.size(); i++){
+      estWrenches.block<3,1>(i*6, 0) -= (*it).second->forceOffset;
+      estWrenches.block<3,1>(i*6 + 3, 0) -= (*it).second->momentOffset;
+    }
+  }
+
+  //std::cerr << estWrenches << std::endl;
   // write port
   {
     m_estWrenches_.tm = m_q_.tm;
@@ -267,6 +281,9 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
 
   std::cerr << "execution time : " << timer.measure() << std::endl;
   return RTC::RTC_OK;
+}
+
+bool WrenchEstimator::removeWrenchEstimatorOffset(const double tm){
 }
 
 static const char* WrenchEstimator_spec[] = {

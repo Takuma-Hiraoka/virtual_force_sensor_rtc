@@ -7,6 +7,7 @@
 #include <rtm/DataFlowComponentBase.h>
 #include <rtm/DataOutPort.h>
 #include <rtm/DataInPort.h>
+#include <rtm/CorbaPort.h>
 #include <rtm/idl/BasicDataType.hh>
 #include <rtm/idl/ExtendedDataTypes.hh>
 
@@ -17,6 +18,8 @@
 #include <cnoid/EigenUtil>
 #include <cnoid/JointPath>
 #include <cnoid/Jacobian>
+
+#include "WrenchEstimatorService_impl.h"
 
 class WrenchEstimator : public RTC::DataFlowComponentBase{
 protected:
@@ -33,6 +36,8 @@ protected:
   RTC::InPort<RTC::TimedAcceleration3D> m_accIn_;
   std::vector<RTC::TimedDoubleSeq> m_wrenches_;
   std::vector<std::unique_ptr<RTC::InPort<RTC::TimedDoubleSeq> > > m_wrenchesIn_;
+  WrenchEstimatorService_impl m_service0_;
+  RTC::CorbaPort m_wrenchEstimatorServicePort_;
 
   wrench_estimator_msgs::TimedWrenches m_estWrenches_;
   RTC::OutPort<wrench_estimator_msgs::TimedWrenches> m_estWrenchesOut_;
@@ -42,13 +47,15 @@ public:
   virtual RTC::ReturnCode_t onInitialize();
   virtual RTC::ReturnCode_t onExecute(RTC::UniqueId ec_id);
 
+  bool removeWrenchEstimatorOffset(const double tm);
+
 private:
   struct WrenchEstimatorParam {
     std::string target_name;
     cnoid::Vector3 p;
     cnoid::Matrix3 R;
-    cnoid::Vector3 forceOffset = cnoid::Vector3(0,0,0);
-    cnoid::Vector3 momentOffset = cnoid::Vector3(0,0,0);
+    cnoid::Vector3 forceOffset = cnoid::Vector3(0,0,0); // sensor 座標系
+    cnoid::Vector3 momentOffset = cnoid::Vector3(0,0,0); // sensor 座標系
   };
   std::map<std::string, std::shared_ptr<WrenchEstimatorParam>> m_sensors;
   cnoid::BodyPtr robot_;

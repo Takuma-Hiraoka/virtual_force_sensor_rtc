@@ -20,6 +20,7 @@ endforeach(lib)
 
 rtmbuild_add_library(WrenchEstimator SHARED
   WrenchEstimator.cpp
+  WrenchEstimatorService_impl.cpp
   )
 target_link_libraries(WrenchEstimator
   ${catkin_LIBRARIES}

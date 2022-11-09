@@ -16,6 +16,12 @@
   <rtconnect from="WrenchEstimator0.rtc:rhsensorIn" to="rmfo.rtc:off_rhsensor" subscription_type="new"/>
   <rtactivate component="WrenchEstimator0.rtc" />
 
+  <!-- service ros bridge -->
+  <node pkg="wrench_estimator_rtc" name="WrenchEstimatorServiceROSBridge" type="WrenchEstimatorServiceROSBridgeComp"
+        output="screen" args ='-o "corba.master_manager:localhost:2810" -o "corba.nameservers:localhost:15005" -o "naming.formats:%n.rtc" -o "exec_cxt.periodic.rate:1000"' />
+  <rtconnect from="WrenchEstimatorServiceROSBridge.rtc:WrenchEstimatorService" to="WrenchEstimator0.rtc:WrenchEstimatorService"  subscription_type="new"/>
+  <rtactivate component="WrenchEstimatorServiceROSBridge.rtc" />
+  
   <!-- ros bridge-->
   <node pkg="wrench_estimator_ros_bridge" name="WrenchEstimatorROSBridge" type="WrenchEstimatorROSBridgeComp"
         output="screen" args ='-o "corba.master_manager:localhost:2810" -o "corba.nameservers:localhost:15005" -o "naming.formats:%n.rtc" -o "exec_cxt.periodic.rate:500" -o "wrench_estimator:$(arg wrench_estimator)"' />
