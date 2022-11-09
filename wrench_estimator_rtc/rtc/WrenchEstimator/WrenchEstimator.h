@@ -10,6 +10,8 @@
 #include <rtm/idl/BasicDataType.hh>
 #include <rtm/idl/ExtendedDataTypes.hh>
 
+#include <wrench_estimator_msgs/idl/WrenchEstimator.hh>
+
 #include <cnoid/EigenTypes>
 #include <cnoid/Body>
 #include <cnoid/EigenUtil>
@@ -31,6 +33,9 @@ protected:
   RTC::InPort<RTC::TimedAcceleration3D> m_accIn_;
   std::vector<RTC::TimedDoubleSeq> m_wrenches_;
   std::vector<std::unique_ptr<RTC::InPort<RTC::TimedDoubleSeq> > > m_wrenchesIn_;
+
+  wrench_estimator_msgs::TimedWrenches m_estWrenches_;
+  RTC::OutPort<wrench_estimator_msgs::TimedWrenches> m_estWrenchesOut_;
 
 public:
   WrenchEstimator(RTC::Manager* manager);

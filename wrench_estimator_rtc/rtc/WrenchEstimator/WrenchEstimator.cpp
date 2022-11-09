@@ -11,7 +11,8 @@ WrenchEstimator::WrenchEstimator(RTC::Manager* manager):
   m_dqIn_("dqIn", m_dq_),
   m_tauIn_("tauIn", m_tau_),
   m_senRpyIn_("senRpyIn", m_senRpy_),
-  m_accIn_("accIn", m_acc_)
+  m_accIn_("accIn", m_acc_),
+  m_estWrenchesOut_("estWrenchesOut", m_estWrenches_)
 {
 }
 
@@ -21,7 +22,7 @@ RTC::ReturnCode_t WrenchEstimator::onInitialize(){
   addInPort("tauIn", this->m_tauIn_);
   addInPort("senRpyIn", this->m_senRpyIn_);
   addInPort("accIn", this->m_accIn_);
-
+  addOutPort("estWrenchesOut", this->m_estWrenchesOut_);
   // load robot model
   cnoid::BodyLoader bodyLoader;
   std::string fileName;
@@ -85,6 +86,7 @@ RTC::ReturnCode_t WrenchEstimator::onInitialize(){
       wep->p = localp;
       wep->R = localR;
       m_sensors[name] = wep;
+
     }
   }
 
@@ -194,6 +196,8 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
 
   }
   //トルクを引く Tvirtual = J^T w^e になっている
+
+  cnoid::VectorXd estWrenches = cnoid::VectorXd::Zero(6 * m_sensors.size());
   {
     //推定したいセンサのJを計算
     cnoid::MatrixXd J = cnoid::MatrixXd::Zero(6 * m_sensors.size(),6+this->robot_->numJoints());
@@ -216,9 +220,26 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
 	it++;
       }
     }
-    cnoid::VectorXd estWrenches = cnoid::VectorXd::Zero(6 * m_sensors.size());
     estWrenches = (J * J.transpose()).inverse() * J * Tvirtual;
     std::cerr << estWrenches << std::endl;
+  }
+
+  // write port
+  {
+    m_estWrenches_.tm = m_q_.tm;
+    m_estWrenches_.data.length(m_sensors.size());
+    std::map<std::string, std::shared_ptr<WrenchEstimatorParam> >::iterator it = m_sensors.begin();
+    for (int i = 0 ; i < m_sensors.size(); i++){
+      m_estWrenches_.data[i].link = (*it).second->target_name.c_str();
+      m_estWrenches_.data[i].force.x = estWrenches[6*i + 0];
+      m_estWrenches_.data[i].force.y = estWrenches[6*i + 1];
+      m_estWrenches_.data[i].force.z = estWrenches[6*i + 2];
+      m_estWrenches_.data[i].moment.x = estWrenches[6*i + 3];
+      m_estWrenches_.data[i].moment.y = estWrenches[6*i + 4];
+      m_estWrenches_.data[i].moment.z = estWrenches[6*i + 5];
+      it++;
+    }
+    this->m_estWrenchesOut_.write();
   }
 
   std::cerr << "execution time : " << timer.measure() << std::endl;

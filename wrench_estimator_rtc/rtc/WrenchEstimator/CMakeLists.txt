@@ -2,6 +2,7 @@ add_definitions(-Wno-deprecated)
 
 find_package(catkin REQUIRED COMPONENTS
   rtmbuild
+  wrench_estimator_msgs
   )
 find_package(choreonoid REQUIRED)
 
