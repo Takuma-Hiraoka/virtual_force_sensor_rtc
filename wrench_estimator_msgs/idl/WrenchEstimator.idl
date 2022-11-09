@@ -1,0 +1,22 @@
+#ifndef WrenchEstimator_idl
+#define WrenchEstimator_idl
+
+#include "ExtendedDataTypes.idl"
+
+module wrench_estimator_msgs
+{
+  struct Wrench
+  {
+    string link;
+    RTC::Vector3D force;
+    RTC::Vector3D moment;
+  };
+
+  struct TimedWrench
+  {
+    RTC::Time tm;
+    Wrench data;
+  };
+};
+
+#endif
