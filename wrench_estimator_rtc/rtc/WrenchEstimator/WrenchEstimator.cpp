@@ -3,6 +3,7 @@
 #include <cnoid/RateGyroSensor>
 #include <cnoid/ForceSensor>
 #include <cnoid/src/Body/InverseDynamics.h>
+#include <cnoid/TimeMeasure>
 
 WrenchEstimator::WrenchEstimator(RTC::Manager* manager):
   RTC::DataFlowComponentBase(manager),
@@ -95,6 +96,8 @@ RTC::ReturnCode_t WrenchEstimator::onInitialize(){
 }
 
 RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
+  cnoid::TimeMeasure timer;
+  timer.begin();
   std::cerr << "WrenchEstimator rtc onExecute" << std::endl;
 
   cnoid::VectorXd Tvirtual = cnoid::VectorXd::Zero(6 + this->robot_->numJoints());
@@ -213,7 +216,12 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
 	it++;
       }
     }
+    cnoid::VectorXd estWrenches = cnoid::VectorXd::Zero(6 * m_sensors.size());
+    estWrenches = (J * J.transpose()).inverse() * J * Tvirtual;
+    std::cerr << estWrenches << std::endl;
   }
+
+  std::cerr << "execution time : " << timer.measure() << std::endl;
   return RTC::RTC_OK;
 }
 
