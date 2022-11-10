@@ -56,14 +56,19 @@ private:
     cnoid::Matrix3 R;
     cnoid::Vector3 forceOffset = cnoid::Vector3(0,0,0); // sensor 座標系
     cnoid::Vector3 momentOffset = cnoid::Vector3(0,0,0); // sensor 座標系
+    cnoid::Vector3 forceOffsetSum = cnoid::Vector3(0,0,0); // sensor 座標系
+    cnoid::Vector3 momentOffsetSum = cnoid::Vector3(0,0,0); // sensor 座標系
   };
   std::map<std::string, std::shared_ptr<WrenchEstimatorParam>> m_sensors;
   cnoid::BodyPtr robot_;
+  double dt_ = 0.002;
 
   cnoid::VectorXd tau_act; // RobotHardwareからの生のトルク
   cnoid::VectorXd tau_g; // 重力補償分のトルク
   cnoid::VectorXd tau_ee; // 6軸力センサで計測されているレンチ分のトルク
 
+  int calib_count = 0;
+  double calib_time = 0.0;
 };
 
 extern "C"

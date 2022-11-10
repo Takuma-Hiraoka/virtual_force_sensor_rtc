@@ -28,6 +28,18 @@ RTC::ReturnCode_t WrenchEstimator::onInitialize(){
   this->m_wrenchEstimatorServicePort_.registerProvider("service0", "WrenchEstimatorService", this->m_service0_);
   addPort(this->m_wrenchEstimatorServicePort_);
 
+  // load dt
+  {
+    std::string buf;
+    if(this->getProperties().hasKey("exec_cxt.periodic.rate")) buf = std::string(this->getProperties()["dt"]);
+    else buf = std::string(this->m_pManager->getConfig()["exec_cxt.periodic.rate"]); // 引数 -o で与えたプロパティを捕捉
+    this->dt_ = 1.0 / std::stod(buf);
+    if(this->dt_ <= 0.0){
+      std::cerr << "\x1b[31m[" << this->m_profile.instance_name << "] " << "dt is invalid" << "\x1b[39m" << std::endl;
+      return RTC::RTC_ERROR;
+    }
+  }
+
   // load robot model
   cnoid::BodyLoader bodyLoader;
   std::string fileName;
@@ -254,9 +266,27 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
   // calibration
   {
     std::map<std::string, std::shared_ptr<WrenchEstimatorParam> >::iterator it = m_sensors.begin();
-    for (int i = 0 ; i < m_sensors.size(); i++){
-      estWrenches.block<3,1>(i*6, 0) -= (*it).second->forceOffset;
-      estWrenches.block<3,1>(i*6 + 3, 0) -= (*it).second->momentOffset;
+    if (this->calib_time == 0.0){
+      for (int i = 0 ; i < m_sensors.size(); i++){
+	estWrenches.block<3,1>(i*6, 0) -= (*it).second->forceOffset;
+	estWrenches.block<3,1>(i*6 + 3, 0) -= (*it).second->momentOffset;
+	it++;
+      }
+    } else { // while calibration
+      this->calib_time -= this->dt_;
+      this->calib_count++;
+      for (int i = 0 ; i < m_sensors.size(); i++){
+	(*it).second->forceOffsetSum += estWrenches.block<3,1>(i*6, 0);
+	(*it).second->momentOffsetSum += estWrenches.block<3,1>(i*6 + 3, 0);
+	if (this->calib_time <= 0.0) {
+	  this->calib_time = 0.0;
+	  (*it).second->forceOffset = (*it).second->forceOffsetSum / this->calib_count;
+	  (*it).second->momentOffset = (*it).second->momentOffsetSum / this->calib_count;
+	  (*it).second->forceOffsetSum = cnoid::Vector3(0,0,0);
+	  (*it).second->momentOffsetSum = cnoid::Vector3(0,0,0);
+	}
+	it++;
+      }
     }
   }
 
@@ -284,6 +314,8 @@ RTC::ReturnCode_t WrenchEstimator::onExecute(RTC::UniqueId ec_id){
 }
 
 bool WrenchEstimator::removeWrenchEstimatorOffset(const double tm){
+  this->calib_count = 0;
+  this->calib_time = tm;
 }
 
 static const char* WrenchEstimator_spec[] = {
