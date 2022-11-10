@@ -3,11 +3,12 @@
   <arg name="URDF_FILE" value="$(find msl_hand_controller)/models/JAXON_JVRC_SENSORS.urdf"/>
   <arg name="MODEL_FILE"     value="$(find msl_hand_models)/JAXON_JVRC_WITH_MSLHAND/JAXON_JVRCmain.wrl"/>
   <arg name="wrench_estimator" default="vlhsensor, LARM_JOINT7, 0,0,0, 0,0,1,0, vrhsensor, RARM_JOINT7, 0,0,0, 0,0,1,0, vlfsensor, LLEG_JOINT5, 0,0,0, 0,0,1,0, vrfsensor, RLEG_JOINT5, 0,0,0, 0,0,1,0, vlssensor, LARM_JOINT2, 0,0,0, 0,0,1,0, vrssensor, RARM_JOINT2, 0,0,0, 0,0,1,0, vlesensor, LARM_JOINT4, 0,0,0, 0,0,1,0, vresensor, RARM_JOINT4, 0,0,0, 0,0,1,0" />
+<!--  <arg name="wrench_estimator" default="vresensor, RARM_JOINT4, 0,0,0, 0,0,1,0" /> -->
   <node pkg="wrench_estimator_rtc" name="WrenchEstimator" type="WrenchEstimatorComp"
         output="screen" args ='-o "corba.master_manager:localhost:2810" -o "corba.nameservers:localhost:15005" -o "naming.formats:%n.rtc" -o "exec_cxt.periodic.rate:10" -o "model:$(arg MODEL_FILE)" -o "wrench_estimator:$(arg wrench_estimator)"' />
   <rtconnect from="WrenchEstimator0.rtc:qIn" to="RobotHardware_choreonoid0.rtc:q" subscription_type="new"/>
   <rtconnect from="WrenchEstimator0.rtc:dqIn" to="RobotHardware_choreonoid0.rtc:dq" subscription_type="new"/>
-  <rtconnect from="WrenchEstimator0.rtc:tauIn" to="RobotHardware_choreonoid0.rtc:tau" subscription_type="new"/>
+  <rtconnect from="WrenchEstimator0.rtc:tauIn" to="tf.rtc:tauOut" subscription_type="new"/>
   <rtconnect from="WrenchEstimator0.rtc:senRpyIn" to="kf.rtc:rpy" subscription_type="new"/>
   <rtconnect from="WrenchEstimator0.rtc:accIn" to="RobotHardware_choreonoid0.rtc:gsensor" subscription_type="new"/>
   <rtconnect from="WrenchEstimator0.rtc:lfsensorIn" to="rmfo.rtc:off_lfsensor" subscription_type="new"/>
